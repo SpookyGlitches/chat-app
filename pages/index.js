@@ -1,10 +1,11 @@
 import Head from "next/head";
-import Image from "next/image";
-import styles from "../styles/Home.module.css";
 import Auth from "../components/Auth";
-import Account from "../components/Account";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../utils/supabaseClient";
+import { Layout } from "antd";
+import Header from "../components/Header";
+const { Sider, Content, Footer } = Layout;
+import Rooms from "../components/Rooms";
 
 export default function Home() {
 	const [session, setSession] = useState(null);
@@ -16,19 +17,26 @@ export default function Home() {
 			setSession(session);
 		});
 	}, []);
-
 	return (
-		<div
-			className="container"
-			style={{ padding: "50px 0 100px 0" }}
-		>
+		<div className="container ">
 			{!session ? (
 				<Auth />
 			) : (
-				<Account
-					key={session.user.id}
-					session={session}
-				/>
+				<Layout style={{ height: "100vh" }}>
+					<Sider
+						style={{
+							overflow: "auto",
+							height: "100%",
+						}}
+					>
+						<Rooms />
+					</Sider>
+					<Layout>
+						<Header />
+						<Content>Content</Content>
+						<Footer>Footer</Footer>
+					</Layout>
+				</Layout>
 			)}
 		</div>
 	);
