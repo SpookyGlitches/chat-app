@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../utils/supabaseClient";
 
-export default function Account({ session }) {
+export default function Account() {
 	const [loading, setLoading] = useState(true);
 	const [username, setUsername] = useState(null);
 	const [website, setWebsite] = useState(null);
 	const [avatar_url, setAvatarUrl] = useState(null);
+	const session = supabase.auth.session();
 
 	useEffect(() => {
 		getProfile();

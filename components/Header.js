@@ -1,4 +1,4 @@
-import { Layout } from "antd";
+import { Layout, Typography } from "antd";
 import { useState, useContext } from "react";
 import { Input, Row, Col, Space, Button, Form } from "antd";
 import { PlusCircleOutlined } from "@ant-design/icons";
@@ -7,21 +7,28 @@ import { supabase } from "../utils/supabaseClient";
 export default function Header() {
 	const [form] = Form.useForm();
 	const user = supabase.auth.user();
-	console.log(user);
+
 	const createRoom = async (values) => {
-		const { data, error } = await supabase
-			.from("rooms")
-			.insert({ created_by: user.id, name: values.roomName });
-		console.log(data, error);
+		if (!values.roomName || values.roomName.length == 0) return;
+
+		const { data: insertRoomData, error: insertRoomError } =
+			await supabase.from("rooms").insert({
+				created_by: user.id,
+				name: values.roomName,
+			});
+
+		if (insertRoomError) alert("Unable to create room. Try again.");
+		// oh no, supabase doesn't have any transactions
+		const { data: insertMemberData, error: insertMemberError } =
+			await supabase.from("room_participants").insert({
+				user_id: user.id,
+				room_id: insertRoomData[0].id,
+			});
+		if (insertMemberError) console.log(insertMemberError);
 	};
+
 	return (
-		<Layout.Header
-			style={{
-				color: "white",
-				display: "flex",
-				alignItems: "center",
-			}}
-		>
+		<Layout.Header>
 			<Row
 				justify="space-between"
 				style={{
@@ -29,7 +36,18 @@ export default function Header() {
 				}}
 			>
 				<Col>
-					<span>Welcome to my Chat App</span>
+					<Typography.Text
+						style={{ color: "white" }}
+					>
+						Welcome to my Chat App
+					</Typography.Text>
+					{/* <Button
+						onClick={async () => {
+							await supabase.auth.signOut();
+						}}
+					>
+						Sign Out
+					</Button> */}
 				</Col>
 				<Col>
 					<Space direction="horizontal">
