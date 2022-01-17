@@ -10,12 +10,8 @@ export default function Members({ roomId }) {
 			.from("room_participants_view")
 			.select()
 			.eq("rp_room_id", roomId.toString());
-		if (error) {
-			alert(error.message);
-			// console.log(error);
-		}
-		// console.log(data);
-		setMembers(data);
+		if (error) alert(error.message);
+		else setMembers(data);
 	};
 	useEffect(() => {
 		getMembers();
@@ -30,23 +26,10 @@ export default function Members({ roomId }) {
 				<List.Item>
 					<List.Item.Meta
 						avatar={
-							<Avatar>
-								{item
-									.username[0] +
-									item
-										.username[1]}
-							</Avatar>
+							<Avatar>{item.username.substring(0, 2)}</Avatar>
 						}
-						title={
-							<Text>
-								{item.username}
-							</Text>
-						}
-						description={
-							<Text type="success">
-								online
-							</Text>
-						}
+						title={<Text>{item.username}</Text>}
+						description={<Text type="success">online</Text>}
 					/>
 				</List.Item>
 			)}

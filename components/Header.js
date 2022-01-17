@@ -11,8 +11,9 @@ export default function Header() {
 	const createRoom = async (values) => {
 		if (!values.roomName || values.roomName.length == 0) return;
 
-		const { data: insertRoomData, error: insertRoomError } =
-			await supabase.from("rooms").insert({
+		const { data: insertRoomData, error: insertRoomError } = await supabase
+			.from("rooms")
+			.insert({
 				created_by: user.id,
 				name: values.roomName,
 			});
@@ -36,9 +37,7 @@ export default function Header() {
 				}}
 			>
 				<Col>
-					<Typography.Text
-						style={{ color: "white" }}
-					>
+					<Typography.Text style={{ color: "white" }}>
 						Welcome to my Chat App
 					</Typography.Text>
 					{/* <Button
@@ -51,11 +50,7 @@ export default function Header() {
 				</Col>
 				<Col>
 					<Space direction="horizontal">
-						<Form
-							form={form}
-							layout="inline"
-							onFinish={createRoom}
-						>
+						<Form form={form} layout="inline" onFinish={createRoom}>
 							<Form.Item name="roomName">
 								<Input
 									type="text"
@@ -67,13 +62,10 @@ export default function Header() {
 								<Button
 									size="large"
 									type="primary"
-									icon={
-										<PlusCircleOutlined />
-									}
+									icon={<PlusCircleOutlined />}
 									htmlType="submit"
 								>
-									Create a
-									Room
+									Create a Room
 								</Button>
 							</Form.Item>
 						</Form>

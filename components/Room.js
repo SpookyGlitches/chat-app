@@ -15,27 +15,19 @@ const { Header, Sider, Content, Footer } = Layout;
 import { PlusCircleOutlined } from "@ant-design/icons";
 import { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseClient";
-
+import Messages from "./Messages";
+import MessageInput from "./MessageInput";
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 export default function Room({ room }) {
-	const [form] = Form.useForm();
-	// console.log("data", room);
+	// const [form] = Form.useForm();
+	const user = supabase.auth.user();
 
 	useEffect(() => {
 		joinElement();
-		return () => {
-			form.resetFields();
-		};
+		return () => {};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [room]);
-
-	const handleTextAreaChange = (e) => {
-		if (e.keyCode === 13 && !e.shiftKey) {
-			console.log("submit");
-		}
-	};
-	const user = supabase.auth.user();
 
 	const joinRoom = async () => {
 		const { data, error } = await supabase
@@ -45,15 +37,9 @@ export default function Room({ room }) {
 	};
 
 	const [joinButton, setJoinButton] = useState(<div></div>);
+
 	const joinElement = async () => {
-		const { data, error } = await supabase
-			.from("room_participants_view")
-			.select()
-			.match({ rp_room_id: room.id, user_id: user.id });
-		console.log(data);
-		if (error || !data || data.length != 0)
-			setJoinButton(<div></div>);
-		if (data.length == 0)
+		if (room.created_by != user.id) {
 			setJoinButton(
 				<Button
 					type="primary"
@@ -64,7 +50,9 @@ export default function Room({ room }) {
 					Join
 				</Button>
 			);
-		return <div></div>;
+		} else {
+			setJoinButton(<></>);
+		}
 	};
 
 	return (
@@ -72,52 +60,28 @@ export default function Room({ room }) {
 			<Layout>
 				<Header
 					style={{
+						borderStyle: "solid ",
+						borderColor: "lightgray",
+						borderWidth: "2px 0",
 						backgroundColor: "white",
 					}}
 				>
-					<Row
-						align="middle"
-						justify="space-between"
-						style={{}}
-					>
+					<Row align="middle" justify="space-between">
 						<Col justify="center">
-							<Text level={4}>
-								Room {room.name}
-							</Text>
+							<Text level={4}>Room {room.name}</Text>
 						</Col>
 						<Col>{joinButton}</Col>
 					</Row>
 				</Header>
-				<Content>Content</Content>
+				<Messages pickedRoom={room} />
+				{/* <Content>Content</Content> */}
 				<Footer
 					style={{
 						width: "100%",
 						backgroundColor: "white",
 					}}
 				>
-					<Form
-						form={form}
-						layout="inline"
-						style={{
-							width: "100%",
-							backgroundColor: "red",
-						}}
-						onFinish={() => {}}
-					>
-						<Form.Item
-							name="roomName"
-							style={{
-								width: "100%",
-							}}
-						>
-							<TextArea
-								rows={2}
-								onKeyDown={
-									handleTextAreaChange
-								}
-							/>
-						</Form.Item>
-					</Form>
+					<MessageInput room={room} />
 				</Footer>
 			</Layout>
 			<Sider
@@ -128,9 +92,7 @@ export default function Room({ room }) {
 					height: "100%",
 				}}
 			>
-				<Typography.Title level={3}>
-					Members
-				</Typography.Title>
+				<Typography.Title level={3}>Members</Typography.Title>
 				<Members roomId={room.id} />
 			</Sider>
 		</Layout>

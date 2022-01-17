@@ -10,6 +10,7 @@ import Room from "../components/Room";
 
 export default function Home() {
 	const [session, setSession] = useState(null);
+	const [pickedRoom, setPickedRoom] = useState(null);
 
 	useEffect(() => {
 		setSession(supabase.auth.session());
@@ -19,11 +20,10 @@ export default function Home() {
 		});
 	}, []);
 
-	const [pickedRoom, setPickedRoom] = useState(null);
-
 	useEffect(() => {
 		console.log(pickedRoom);
 	}, [pickedRoom]);
+
 	return (
 		<div className="container ">
 			{!session ? (
