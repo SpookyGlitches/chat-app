@@ -1,7 +1,7 @@
 import { Layout } from "antd";
 import { Menu } from "antd";
 import { supabase } from "../utils/supabaseClient";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { List, Avatar } from "antd";
 import { formatRelative, isSameDay, format } from "date-fns";
 import { Row, Col, Space, Typography, Divider } from "antd";
@@ -10,8 +10,14 @@ import InfiniteScroll from "react-infinite-scroller";
 const { Text } = Typography;
 
 const Messages = function MessagesList({ pickedRoom }) {
+	const paginationDefault = { start: 0, end: 20 };
 	const [messages, setMessages] = useState([]);
-	const [start, setStart] = useState(0);
+	const [pagination, setPagination] = useState(paginationDefault);
+	const [hasMore, setHasMore] = useState(true);
+	const resetValues = () => {
+		setPagination(paginationDefault);
+		setHasMore(true);
+	};
 	const fetchMessages = async () => {
 		const { data, error, count } = await supabase
 			.from("messages")
@@ -26,14 +32,20 @@ const Messages = function MessagesList({ pickedRoom }) {
 		`,
 				{ count: "exact" }
 			)
-			.range(0, 10)
-			.order("created_at", { ascending: false })
+			.range(pagination.start, pagination.end)
+			.order("created_at")
 			.eq("room_id", pickedRoom.id);
 		if (error) {
-			alert(error.message);
+			setHasMore(false);
 			return;
 		}
-		setMessages(data.reverse());
+		console.log("count", count);
+		setPagination((prevState) => {
+			setHasMore(pagination.end < count);
+			return { start: prevState.end, end: prevState.end + 40 };
+		});
+		console.log(data);
+		setMessages(data);
 	};
 
 	const addIncomingMessage = (message) => {
@@ -59,15 +71,16 @@ const Messages = function MessagesList({ pickedRoom }) {
 			.single();
 
 		if (error) {
-			alert(error.message);
+			alert("74", error.message);
 			return;
 		}
-		console.log("new data", data);
 		addIncomingMessage(data);
 	};
 
 	useEffect(() => {
-		fetchMessages();
+		console.log("changed");
+		resetValues();
+		// fetchMessages();
 		const subscribeToMessages = supabase
 			.from("messages")
 			.on("INSERT", handleIncomingMessage)
@@ -76,7 +89,6 @@ const Messages = function MessagesList({ pickedRoom }) {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [pickedRoom]);
 	// useEffect(() => {
-
 	const Message = ({ data }) => {
 		return (
 			<Row wrap={false} align="top" gutter={8}>
@@ -118,20 +130,20 @@ const Messages = function MessagesList({ pickedRoom }) {
 	const renderMessages = () => {
 		let dateL = null;
 		const items = messages.map((element) => {
-			// const dateR = new Date(element.created_at);
-			// if (!isSameDay(dateL, dateR)) {
-			// 	dateL = dateR;
-			// 	return (
-			// 		// this is probably wrong
-			// 		<React.Fragment key={element.id}>
-			// 			<Divider plain orientation="center">
-			// 				{format(dateL, "MMMM d, yyyy  ")}
-			// 			</Divider>
-			// 			<Message data={element} />
-			// 		</React.Fragment>
-			// 	);
-			// }
-			// dateL = dateR;
+			const dateR = new Date(element.created_at);
+			if (!isSameDay(dateL, dateR)) {
+				dateL = dateR;
+				return (
+					// this is probably wrong
+					<React.Fragment key={element.id}>
+						<Divider plain orientation="center">
+							{format(dateL, "MMMM d, yyyy  ")}
+						</Divider>
+						<Message data={element} />
+					</React.Fragment>
+				);
+			}
+			dateL = dateR;
 			return <Message data={element} key={element.id} />;
 		});
 		return items;
@@ -147,10 +159,11 @@ const Messages = function MessagesList({ pickedRoom }) {
 			}}
 		>
 			<InfiniteScroll
-				pageStart={0}
-				loadMore={() => {}}
-				hasMore={true}
+				useWindow={false}
+				loadMore={() => fetchMessages()}
+				hasMore={hasMore}
 				isReverse={true}
+				initialLoad={true}
 				loader={
 					<div className="loader" key={0}>
 						Loading ...
