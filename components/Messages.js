@@ -1,58 +1,92 @@
-import { Layout } from "antd";
-import { Menu } from "antd";
 import { supabase } from "../utils/supabaseClient";
 import React, { useEffect, useState, useRef } from "react";
-import { List, Avatar } from "antd";
 import { formatRelative, isSameDay, format } from "date-fns";
-import { Row, Col, Space, Typography, Divider } from "antd";
-import InfiniteScroll from "react-infinite-scroller";
+import {
+	Row,
+	Col,
+	Space,
+	Typography,
+	Divider,
+	List,
+	Avatar,
+	Menu,
+	Layout,
+	Skeleton,
+} from "antd";
+import InfiniteScroll from "react-infinite-scroll-component";
+import { useRouter } from "next/router";
 
 const { Text } = Typography;
 
-const Messages = function MessagesList({ pickedRoom }) {
-	const paginationDefault = { start: 0, end: 20 };
+const Messages = () => {
+	const [limit, setLimit] = useState(10);
+	const [hasMore, setHasMore] = useState(false);
 	const [messages, setMessages] = useState([]);
-	const [pagination, setPagination] = useState(paginationDefault);
-	const [hasMore, setHasMore] = useState(true);
+	const [loading, setLoading] = useState(false);
+
+	const router = useRouter();
+	const { query, isReady } = router;
+
 	const resetValues = () => {
-		setPagination(paginationDefault);
-		setHasMore(true);
+		setLimit(10);
+		setHasMore(false);
+		setLoading(false);
+		setMessages([]);
 	};
+
 	const fetchMessages = async () => {
+		if (loading) return;
+		else setLoading(true);
+
 		const { data, error, count } = await supabase
 			.from("messages")
 			.select(
 				`
-			id,
-			created_at,
-			content,
-			created_by(
-				username
-			)
-		`,
+				id,
+				created_at,
+				content,
+				created_by(
+					username
+				)
+				`,
 				{ count: "exact" }
 			)
-			.range(pagination.start, pagination.end)
-			.order("created_at")
-			.eq("room_id", pickedRoom.id);
+			.limit(limit)
+			.order("created_at", { ascending: false })
+			.eq("room_id", query.id);
+
 		if (error) {
-			setHasMore(false);
+			alert(error.message);
 			return;
 		}
-		console.log("count", count);
-		setPagination((prevState) => {
-			setHasMore(pagination.end < count);
-			return { start: prevState.end, end: prevState.end + 40 };
-		});
-		console.log(data);
+
+		data.reverse();
+		if (messages.length >= count) {
+			setHasMore(false);
+		} else {
+			setHasMore(true);
+			setLimit((prevState) => prevState + 10);
+		}
 		setMessages(data);
+		setLoading(false);
 	};
 
+	// not sure how this works
+	let dateL = null;
+
 	const addIncomingMessage = (message) => {
+		// there's probably a bug here at 11:59 pm - ??
 		setMessages((prevState) => [...prevState, message]);
 	};
 
 	const handleIncomingMessage = async (payload) => {
+		console.log(
+			"Incoming Message Called with Room Id: %s and Payload Id: %s",
+			query.id,
+			payload.new.room_id
+		);
+
+		if (query.id != payload.new.room_id) return;
 		const { data, error } = await supabase
 			.from("messages")
 			.select(
@@ -66,119 +100,133 @@ const Messages = function MessagesList({ pickedRoom }) {
 					)
 			`
 			)
-			.match({ id: payload.new.id, room_id: payload.new.room_id })
+			.match({ id: payload.new.id, room_id: query.id })
 			.limit(1)
-			.single();
+			.maybeSingle();
 
-		if (error) {
-			alert("74", error.message);
+		if (error || !data) {
+			alert("Unable to retrieve messages");
+			console.log(error || "No data");
 			return;
 		}
 		addIncomingMessage(data);
 	};
 
+	const renderMessage = (element) => {
+		const dateR = new Date(element.created_at);
+		// i think this is super wrong :(
+		if (!dateL || !isSameDay(dateL, dateR)) {
+			dateL = dateR;
+			return (
+				<React.Fragment key={element.id}>
+					<Divider plain orientation="center">
+						{format(dateL, "MMMM d, yyyy  ")}
+					</Divider>
+					<Message data={element} />
+				</React.Fragment>
+			);
+		}
+
+		dateL = dateR;
+		return (
+			<React.Fragment key={element.id}>
+				<Message data={element} />
+			</React.Fragment>
+		);
+	};
+
 	useEffect(() => {
-		console.log("changed");
-		resetValues();
-		// fetchMessages();
+		if (!isReady) return;
+		fetchMessages();
 		const subscribeToMessages = supabase
 			.from("messages")
 			.on("INSERT", handleIncomingMessage)
 			.subscribe();
-		return () => supabase.removeSubscription(subscribeToMessages);
+		return () => {
+			resetValues();
+			supabase.removeSubscription(subscribeToMessages);
+		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [pickedRoom]);
-	// useEffect(() => {
-	const Message = ({ data }) => {
-		return (
-			<Row wrap={false} align="top" gutter={8}>
-				<Col>
-					<Avatar size="large">
-						{data.created_by.username.substring(0, 2)}
-					</Avatar>
-				</Col>
-				<Col>
-					<Row gutter={6}>
-						<Col>
-							<Text strong>{data.created_by.username}</Text>
-						</Col>
-						<Col>
-							<Text type="secondary">
-								{formatRelative(
-									new Date(data.created_at),
-									new Date()
-								)}
-							</Text>
-						</Col>
-					</Row>
-					<Row>
-						<Row>
-							<Col
-								style={{
-									whiteSpace: "pre-wrap",
-									wordBreak: "break-all",
-								}}
-							>
-								{data.content}
-							</Col>
-						</Row>
-					</Row>
-				</Col>
-			</Row>
-		);
-	};
-	const renderMessages = () => {
-		let dateL = null;
-		const items = messages.map((element) => {
-			const dateR = new Date(element.created_at);
-			if (!isSameDay(dateL, dateR)) {
-				dateL = dateR;
-				return (
-					// this is probably wrong
-					<React.Fragment key={element.id}>
-						<Divider plain orientation="center">
-							{format(dateL, "MMMM d, yyyy  ")}
-						</Divider>
-						<Message data={element} />
-					</React.Fragment>
-				);
-			}
-			dateL = dateR;
-			return <Message data={element} key={element.id} />;
-		});
-		return items;
-	};
+	}, [router]);
 
 	return (
 		<div
+			id="scrollableDiv"
 			style={{
-				overflowX: "hidden",
-				overflowY: "auto",
-				padding: "1.5rem 2.5rem",
+				height: "100%",
+				overflow: "auto",
+				display: "flex",
 				backgroundColor: "white",
+				flexDirection: "column-reverse",
+				padding: "2rem",
+				border: 0,
 			}}
 		>
 			<InfiniteScroll
-				useWindow={false}
-				loadMore={() => fetchMessages()}
+				dataLength={messages.length}
+				next={() => fetchMessages()}
+				style={{
+					display: "flex",
+					flexDirection: "column-reverse",
+					overflow: "hidden",
+				}}
+				bordered={false}
+				inverse={true}
 				hasMore={hasMore}
-				isReverse={true}
-				initialLoad={true}
-				loader={
-					<div className="loader" key={0}>
-						Loading ...
-					</div>
-				}
+				loader={<Skeleton avatar paragraph={{ rows: 1 }} active />}
+				endMessage={<Divider plain>End 😀</Divider>}
+				scrollableTarget="scrollableDiv"
 			>
-				{/* <Space
-					direction="vertical"
-					size="large"
-					style={{ width: "100%" }}
-				> */}
-				{renderMessages()}
-				{/* </Space> */}
+				<List
+					bordered={false}
+					dataSource={messages}
+					renderItem={(item) => (
+						<List.Item key={item.id} style={{ display: "block" }}>
+							{renderMessage(item)}
+						</List.Item>
+					)}
+				/>
 			</InfiniteScroll>
 		</div>
+	);
+};
+
+const Message = ({ data }) => {
+	return (
+		<Row wrap={false} align="top" gutter={8}>
+			<Col>
+				<Avatar size="large">
+					{data.created_by.username.substring(0, 2)}
+				</Avatar>
+			</Col>
+			<Col>
+				<Row gutter={6}>
+					<Col>
+						<Text strong>{data.created_by.username}</Text>
+					</Col>
+					<Col>
+						<Text type="secondary">
+							{formatRelative(
+								new Date(data.created_at),
+								new Date()
+							)}
+						</Text>
+					</Col>
+				</Row>
+				<Row>
+					<Row>
+						<Col
+							style={{
+								whiteSpace: "pre-wrap",
+								wordBreak: "break-all",
+							}}
+						>
+							{data.content}
+						</Col>
+					</Row>
+				</Row>
+			</Col>
+		</Row>
 	);
 };
 
