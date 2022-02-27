@@ -61,11 +61,13 @@ const Messages = () => {
 		}
 
 		data.reverse();
-		if (messages.length >= count) {
-			setHasMore(false);
-		} else {
-			setHasMore(true);
-			setLimit((prevState) => prevState + 10);
+		console.log("count",count)
+		console.log("messages", messages)
+		if(count < limit){
+			setHasMore(false)
+		}else{
+			setHasMore(true)
+			setLimit(prevState => prevState + 10)
 		}
 		setMessages(data);
 		setLoading(false);
