@@ -80,13 +80,6 @@ const Messages = () => {
 	};
 
 	const handleIncomingMessage = async (payload) => {
-		console.log(
-			"Incoming Message Called with Room Id: %s and Payload Id: %s",
-			query.id,
-			payload.new.room_id
-		);
-
-		if (query.id != payload.new.room_id) return;
 		const { data, error } = await supabase
 			.from("messages")
 			.select(
@@ -105,7 +98,7 @@ const Messages = () => {
 			.maybeSingle();
 
 		if (error || !data) {
-			alert("Unable to retrieve messages");
+			alert("Unable to retrieve the message.");
 			console.log(error || "No data");
 			return;
 		}
@@ -136,10 +129,10 @@ const Messages = () => {
 	};
 
 	useEffect(() => {
-		if (!isReady) return;
+		if (!router.isReady) return;
 		fetchMessages();
 		const subscribeToMessages = supabase
-			.from("messages")
+			.from(`messages:room_id=eq.${router.query.id}`)
 			.on("INSERT", handleIncomingMessage)
 			.subscribe();
 		return () => {
