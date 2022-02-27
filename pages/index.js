@@ -22,6 +22,7 @@ export default function Home() {
 		} else {
 			fetchJoinedRooms();
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [session]);
 
 	const fetchJoinedRooms = async () => {

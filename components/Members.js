@@ -48,6 +48,7 @@ export default function Members() {
 		return () => {
 			supabase.removeSubscription(subscribeToProfiles);
 		};
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [loading]);
 
 	useEffect(() => {

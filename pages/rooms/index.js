@@ -115,11 +115,11 @@ export default function Index() {
 
 	useEffect(() => {
 		countRooms();
-		fetchRooms();
 	}, []);
 
 	useEffect(() => {
 		fetchRooms();
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [page]);
 
 	const handlePageChange = (page, pageSize) => {
